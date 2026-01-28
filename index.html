@@ -32,6 +32,51 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
+        /* Floating icons background */
+        .floating-icons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .floating-icon {
+            position: absolute;
+            opacity: 0.03;
+            color: #4f46e5;
+            font-size: 24px;
+            animation: float 15s infinite linear;
+        }
+        
+        .floating-icon:nth-child(2n) {
+            color: #10b981;
+            animation-duration: 20s;
+            animation-direction: reverse;
+        }
+        
+        .floating-icon:nth-child(3n) {
+            color: #6366f1;
+            animation-duration: 25s;
+        }
+        
+        .floating-icon:nth-child(4n) {
+            color: #f59e0b;
+            animation-duration: 30s;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            100% {
+                transform: translate(100vw, 100vh) rotate(360deg);
+            }
+        }
+        
         /* View-only mode: hide upload section immediately */
         .view-only-mode #uploadSection {
             display: none !important;
@@ -648,6 +693,9 @@
     </style>
 </head>
 <body class="min-h-screen">
+    <!-- Floating Icons Background -->
+    <div class="floating-icons" id="floatingIcons"></div>
+    
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
@@ -848,7 +896,8 @@
                     
                     <div class="relative">
                         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" id="searchEmployee" placeholder="Search Employee..." class="border border-gray-300 rounded-lg pl-9 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 w-48">
+                        <input type="text" id="searchClaimId" placeholder="Search Claim ID..." 
+                               class="border border-gray-300 rounded-lg pl-9 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 w-48">
                     </div>
                     
                     <button onclick="resetFilters()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition flex items-center gap-2">
@@ -1159,6 +1208,7 @@
             columnMapping = {
                 employeeCode: findColumn(columns, ['employee code', 'emp code', 'empcode', 'emp_code', 'employee_code', 'code', 'id', 'member id']),
                 employeeName: findColumn(columns, ['employee name', 'name', 'member name', 'emp name', 'empname']),
+                claimID: findColumn(columns, ['claim id', 'claimid', 'claim_id', 'reference', 'ref', 'claim number', 'claim no', 'claimid']),
                 claimType: findColumn(columns, ['claims', 'claim type', 'claimtype', 'type', 'claim_type']),
                 category: findColumn(columns, ['category', 'status', 'claim status', 'process status', 'claim category']),
                 disease: findColumn(columns, ['icd', 'disease', 'diagnosis', 'ailment', 'illness', 'condition', 'disease type', 'diseasetype', 'icd code', 'icd description']),
@@ -1259,7 +1309,7 @@
             ['diseaseFilter', 'relationFilter', 'claimTypeFilter', 'hospitalFilter'].forEach(id => {
                 document.getElementById(id).addEventListener('change', applyFilters);
             });
-            document.getElementById('searchEmployee').addEventListener('input', debounce(applyFilters, 300));
+            document.getElementById('searchClaimId').addEventListener('input', debounce(applyFilters, 300));
         }
 
         function populateSelect(id, options, defaultText) {
@@ -1283,7 +1333,7 @@
             const relationFilter = document.getElementById('relationFilter').value;
             const claimTypeFilter = document.getElementById('claimTypeFilter').value;
             const hospitalFilter = document.getElementById('hospitalFilter').value;
-            const searchTerm = document.getElementById('searchEmployee').value.toLowerCase();
+            const searchTerm = document.getElementById('searchClaimId').value.toLowerCase();
 
             filteredData = rawData.filter(row => {
                 const matchDisease = diseaseFilter === 'all' || getValue(row, 'disease') === diseaseFilter;
@@ -1291,8 +1341,7 @@
                 const matchClaimType = claimTypeFilter === 'all' || getValue(row, 'claimType') === claimTypeFilter || matchesClaimStatus(row, claimTypeFilter);
                 const matchHospital = hospitalFilter === 'all' || getValue(row, 'hospital') === hospitalFilter;
                 const matchSearch = !searchTerm || 
-                    String(getValue(row, 'employeeName')).toLowerCase().includes(searchTerm) ||
-                    String(getValue(row, 'employeeCode')).toLowerCase().includes(searchTerm);
+                    String(getValue(row, 'claimID')).toLowerCase().includes(searchTerm);
                 
                 // Apply cross-filters
                 const matchCrossDisease = !crossFilters.disease || getValue(row, 'disease') === crossFilters.disease;
@@ -1314,13 +1363,13 @@
             const relationFilter = document.getElementById('relationFilter').value;
             const claimTypeFilter = document.getElementById('claimTypeFilter').value;
             const hospitalFilter = document.getElementById('hospitalFilter').value;
-            const searchTerm = document.getElementById('searchEmployee').value;
+            const searchTerm = document.getElementById('searchClaimId').value;
 
             if (diseaseFilter !== 'all') tags.push({ type: 'disease', value: diseaseFilter });
             if (relationFilter !== 'all') tags.push({ type: 'relation', value: relationFilter });
             if (claimTypeFilter !== 'all') tags.push({ type: 'claimType', value: claimTypeFilter });
             if (hospitalFilter !== 'all') tags.push({ type: 'hospital', value: hospitalFilter });
-            if (searchTerm) tags.push({ type: 'search', value: `"${searchTerm}"` });
+            if (searchTerm) tags.push({ type: 'search', value: `Claim ID: "${searchTerm}"` });
             
             Object.entries(crossFilters).forEach(([key, value]) => {
                 if (value) tags.push({ type: `cross-${key}`, value: value, isCross: true });
@@ -1364,7 +1413,7 @@
             } else if (type === 'hospital') {
                 document.getElementById('hospitalFilter').value = 'all';
             } else if (type === 'search') {
-                document.getElementById('searchEmployee').value = '';
+                document.getElementById('searchClaimId').value = '';
             }
             applyFilters();
         }
@@ -1374,7 +1423,7 @@
             document.getElementById('relationFilter').value = 'all';
             document.getElementById('claimTypeFilter').value = 'all';
             document.getElementById('hospitalFilter').value = 'all';
-            document.getElementById('searchEmployee').value = '';
+            document.getElementById('searchClaimId').value = '';
             crossFilters = { disease: null, relation: null, hospital: null, claimType: null };
             filteredData = [...rawData];
             updateActiveFiltersBar();
@@ -2571,6 +2620,7 @@ This report was generated from the Claims Analytics Dashboard.
             rawData = [];
             
             for (let i = 0; i < 300; i++) {
+                const claimId = `CLM${String(i+1).padStart(6, '0')}`;
                 const claimedAmount = Math.floor(Math.random() * 400000) + 10000;
                 const category = categories[Math.floor(Math.random() * categories.length)];
                 const paidAmount = category === 'In Process' ? 0 : claimedAmount * (0.75 + Math.random() * 0.2);
@@ -2578,6 +2628,7 @@ This report was generated from the Claims Analytics Dashboard.
                 const si = siOptions[Math.floor(Math.random() * siOptions.length)];
                 
                 rawData.push({
+                    'Claim ID': claimId,
                     'Employee Code': `EMP${String(Math.floor(Math.random() * 1000) + 1).padStart(4, '0')}`,
                     'Employee Name': names[Math.floor(Math.random() * names.length)],
                     'Claims': claimTypes[Math.floor(Math.random() * claimTypes.length)],
@@ -2593,7 +2644,10 @@ This report was generated from the Claims Analytics Dashboard.
 
             // Add outliers
             for (let i = 0; i < 12; i++) {
+                const claimId = `CLM${String(300 + i + 1).padStart(6, '0')}`;
+                
                 rawData.push({
+                    'Claim ID': claimId,
                     'Employee Code': `EMP${String(Math.floor(Math.random() * 100) + 9000).padStart(4, '0')}`,
                     'Employee Name': names[Math.floor(Math.random() * names.length)],
                     'Claims': claimTypes[Math.floor(Math.random() * claimTypes.length)],
@@ -2608,6 +2662,7 @@ This report was generated from the Claims Analytics Dashboard.
             }
 
             columnMapping = {
+                claimID: 'Claim ID',
                 employeeCode: 'Employee Code',
                 employeeName: 'Employee Name',
                 claimType: 'Claims',
@@ -2713,7 +2768,7 @@ This report was generated from the Claims Analytics Dashboard.
         // ============ VIEW-ONLY & SHARING FUNCTIONALITY WITH JSONBIN.IO ============
         
         // JSONBin.io Configuration (Free tier - 10,000 requests/month)
-        const JSONBIN_API_KEY = '$2a$10$UBVOOvQrNZ4UFEp7hXgc8.jAu2cXuFsXC25ygmI5cdD44jeyI/B.S';
+        const JSONBIN_API_KEY = '$2a$10$DpQmvIIcKI4hBxBV1PURxudIGbJmY.aoC0OrijfkYkIWOoZz5fkO.';
         const JSONBIN_BASE_URL = 'https://api.jsonbin.io/v3';
         
         // Using JSONBlob.com (No API key required!) - More reliable
@@ -2947,8 +3002,37 @@ This report was generated from the Claims Analytics Dashboard.
             }
         };
 
+        // Create floating icons background
+        function createFloatingIcons() {
+            const iconsContainer = document.getElementById('floatingIcons');
+            const icons = ['fa-chart-line', 'fa-disease', 'fa-hospital', 'fa-user-injured', 
+                           'fa-stethoscope', 'fa-pills', 'fa-heartbeat', 'fa-prescription-bottle',
+                           'fa-file-invoice-dollar', 'fa-clipboard-check', 'fa-percentage', 'fa-calculator'];
+            
+            // Create 30 floating icons
+            for (let i = 0; i < 30; i++) {
+                const icon = document.createElement('i');
+                icon.className = `floating-icon fas ${icons[i % icons.length]}`;
+                
+                // Random position
+                icon.style.left = `${Math.random() * 100}%`;
+                icon.style.top = `${Math.random() * 100}%`;
+                
+                // Random size
+                icon.style.fontSize = `${Math.random() * 20 + 16}px`;
+                
+                // Random animation delay
+                icon.style.animationDelay = `${Math.random() * 5}s`;
+                
+                iconsContainer.appendChild(icon);
+            }
+        }
+
         // Initialize on page load - check view mode FIRST before anything else
         document.addEventListener('DOMContentLoaded', () => {
+            // Create floating icons
+            createFloatingIcons();
+            
             if (window.isViewOnlyFromURL && window.sharedDataId) {
                 isViewOnlyMode = true;
                 
